@@ -1,24 +1,29 @@
-# %% [markdown]
-# 从 survey_dates.csv 中筛选：wave1 日期在 2024 年 1 月 的 household_ID
-
 import os
 
 import pandas as pd
 
-# ===== 1. 配置路径 =====
-DATA_ROOT = r"survey_data"
+"""
+Script Description:
+Since the dataset involved three successive questionnaire surveys, we only selected users who participated in the w1 questionnaire.
+This script selects households with wave1 survey dates in January 2024 from "survey_dates.csv".
+The output is saved as "02 Valid_w1_households_2024_01.csv".
+"""
+
+# ===== 1. Configuration =====
+DATA_ROOT = r"01 Dataset\01 Raw Data from IEEE DataPort\02 Survey data"
 SURVEY_DATES_PATH = os.path.join(DATA_ROOT, "survey_dates.csv")
-OUTPUT_PATH = os.path.join(DATA_ROOT, "valid_w1_households_2024_01.csv")
+OUT_DIR = r"01 Dataset\02 Processed Data"
+OUTPUT_PATH = os.path.join(OUT_DIR, "02 Valid_w1_households_2024_01.csv")
 
 print("Input :", SURVEY_DATES_PATH)
 print("Output:", OUTPUT_PATH)
 
-# ===== 2. 读入数据 =====
+# ===== 2. Read data =====
 df = pd.read_csv(SURVEY_DATES_PATH, sep=None, engine="python")
 df.columns = df.columns.str.strip()
-print("列名：", df.columns.tolist())
+print("Columns:", df.columns.tolist())
 
-# ===== 3. household_ID 列（尽量自动识别） =====
+# ===== 3. Identify household_ID column (try to detect automatically) =====
 hh_col = None
 for c in df.columns:
     cl = c.lower().replace(" ", "").replace("-", "").replace("_", "")
@@ -27,39 +32,38 @@ for c in df.columns:
         break
 
 if hh_col is None:
-    # 如果你的列名本来就叫 'household_ID'，也可以直接写：
+    # If column name is already 'household_ID', you can directly write:
     # hh_col = "household_ID"
-    raise KeyError("没有找到 household_ID / HHID 列，请检查 survey_dates.csv 的列名。")
+    raise KeyError("Did not find household_ID / HHID column, please check the column names in survey_dates.csv.")
 
-print("识别到 household 列：", hh_col)
-
-# ===== 4. 解析 wave1 日期 =====
+print("Identified household column:", hh_col)
+# ===== 4. Parse wave1 date =====
 if "wave1" not in df.columns:
-    raise KeyError("没有找到列名 'wave1'，请确认文件中列名是否为 wave1。")
+    raise KeyError("Did not find column 'wave1', please check if the column name is 'wave1' in the file.")
 
-# wave1 是日期字符串，例如 2024-01-15 之类
+# wave1 is a date string, e.g., 2024-01-15 or similar
 df["wave1_datetime"] = pd.to_datetime(df["wave1"], errors="coerce")
 
-# 丢掉无法解析日期的行
+# Drop rows with unparseable dates
 before = len(df)
 df = df.dropna(subset=["wave1_datetime"]).copy()
-print(f"丢弃无法解析 wave1 日期的行数：{before - len(df)}")
+print(f"Dropped rows with unparseable wave1 dates: {before - len(df)}")
 
-# 年和月
+# Year and month
 df["wave1_year"] = df["wave1_datetime"].dt.year
 df["wave1_month"] = df["wave1_datetime"].dt.month
 
-# ===== 5. 过滤：2024 年 1 月 =====
+# ===== 5. Filter: January 2024 =====
 mask_2024_jan = (df["wave1_year"] == 2024) & (df["wave1_month"] == 1)
 
 valid_households = df.loc[mask_2024_jan, hh_col].dropna().drop_duplicates().sort_values().reset_index(drop=True)
 
-# 打印总用户数
-print("\n✅ wave1 在 2024 年 1 月的 household 数量:", len(valid_households))
+# Print total number of users
+print("\nNumber of households with wave1 in January 2024:", len(valid_households))
 
-# 预览前几行
+# Preview first few rows
 out_df = pd.DataFrame({"household_ID": valid_households})
 
-# 保存到 CSV（如果你需要）
+# Save to CSV (if needed)
 out_df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8")
-print("已保存有效 household_ID 列表到：", OUTPUT_PATH)
+print("Saved valid household_ID list to:", OUTPUT_PATH)

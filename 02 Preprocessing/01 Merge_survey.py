@@ -1,51 +1,60 @@
-# %% [markdown]
-# # Build Wave 1 Household-level Features (one row per household)
-
 import os
 from functools import reduce
 
 import numpy as np
 import pandas as pd
 
-# ===== 1. 配置：Wave 1 文件所在目录 =====
-# 比如：r"D:\rec_dataset\survey_data\wave_1"
-W1_DIR = r"survey_data\wave_1"  # TODO: 改成你自己的路径
+"""
+Script Description:
+This script merges the survey questionnaire data tables into a single household-level feature table.
+The original survey form contains multiple tables, each representing different aspects of household information:
+    1) w1_ac_roster.csv: Air conditioner details
+    2) w1_appliances.csv: Appliance usage details
+    3) w1_demographics.csv: Demographic information of household members
+    4) w1_electricity_generation_water_heating_cooking.csv: Energy generation and cooking methods
+    5) w1_fan_roster.csv: Fan details
+    6) w1_household_information_and_history.csv: General household information
+    7) w1_light_roster.csv: Lighting details
+    8) w1_room_roster.csv: Room details
+The script processes each table to extract relevant household-level features and merges them into a single DataFrame.
+"""
 
-# 各文件路径
-PATH_W1_DEMO = os.path.join(W1_DIR, "w1_demographics.csv")
-PATH_W1_APPL = os.path.join(W1_DIR, "w1_appliances.csv")
-PATH_W1_AC = os.path.join(W1_DIR, "w1_ac_roster.csv")
-PATH_W1_FAN = os.path.join(W1_DIR, "w1_fan_roster.csv")
-PATH_W1_LIGHT = os.path.join(W1_DIR, "w1_light_roster.csv")
-PATH_W1_ROOM = os.path.join(W1_DIR, "w1_room_roster.csv")
-PATH_W1_HHINFO = os.path.join(W1_DIR, "w1_household_information_and_history.csv")
-PATH_W1_ENERGY = os.path.join(W1_DIR, "w1_electricity_generation_water_heating_cooking.csv")
 
-OUTPUT_W1_FEATURES = os.path.join(W1_DIR, "w1_household_features_merged.csv")
-
-
-# ===== 2. 小工具：更稳健的 CSV 读取 =====
+# ===== 1. Utility: More robust CSV reading =====
 def read_csv_flexible(path: str) -> pd.DataFrame:
-    print(f"读取 {os.path.basename(path)}")
+    print(f"Reading {os.path.basename(path)}")
     df = pd.read_csv(path, sep=None, engine="python")
     df.columns = df.columns.str.strip()
     return df
 
 
-# ===== 3. 各表构造 household-level 特征 =====
-
-
+# ===== 2. Build household-level features from each table =====
 def build_demographics_features(path: str) -> pd.DataFrame:
-    """从 w1_demographics 构造人口结构特征"""
+    """
+    Build demographic features from w1_demographics
+    Features include:
+    - Household member count
+    - Average age
+    - Number of children (<18)
+    - Number of seniors (65+)
+    - Average hours stayed at home last week
+    - Share of members who went out for work last week
+
+    Parameters:
+    path (str): Path to the w1_demographics CSV file.
+
+    Returns:
+    pd.DataFrame: DataFrame with household-level demographic features.
+    """
     df = read_csv_flexible(path)
     g = df.groupby("household_ID")
 
     feats = pd.DataFrame(index=g.size().index)
 
-    # 家庭成员数量
+    # Household member count
     feats["w1_hh_member_count"] = g.size()
 
-    # 年龄相关
+    # Age-related features
     if "age" in df.columns:
         feats["w1_hh_avg_age"] = g["age"].mean()
         feats["w1_hh_num_children"] = g.apply(lambda x: (x["age"] < 18).sum())
@@ -55,12 +64,12 @@ def build_demographics_features(path: str) -> pd.DataFrame:
         feats["w1_hh_num_children"] = np.nan
         feats["w1_hh_num_seniors"] = np.nan
 
-    # 在家时长
+    # Average hours stayed at home last week
     col_home = "no_of_hours_stayed_at_home_during_last_week"
     if col_home in df.columns:
         feats["w1_hh_avg_hours_home"] = g[col_home].mean()
 
-    # 外出工作比例
+    # Share of members who went out for work last week
     col_work = "member_went_out_for_work_or_not_during_last_week"
     if col_work in df.columns:
         feats["w1_hh_share_went_out_for_work"] = g[col_work].apply(
@@ -68,15 +77,26 @@ def build_demographics_features(path: str) -> pd.DataFrame:
         )
 
     feats = feats.reset_index()
-    print("  demographics 特征形状:", feats.shape)
+    print("demographic feature shape:", feats.shape)
     return feats
 
 
 def build_appliance_features(path: str) -> pd.DataFrame:
-    """从 w1_appliances 构造家电数量 & 使用时长特征"""
+    """
+    Build appliance usage features from w1_appliances
+    Features include:
+    - Total usage hours per appliance type
+    - Count of each appliance type
+
+    Parameters:
+    path (str): Path to the w1_appliances CSV file.
+
+    Returns:
+    pd.DataFrame: DataFrame with household-level appliance features.
+    """
     df = read_csv_flexible(path)
 
-    # 每户每种家电使用小时数
+    # Total usage hours per appliance type
     pivot_hours = df.pivot_table(
         index="household_ID",
         columns="appliance_type",
@@ -86,19 +106,31 @@ def build_appliance_features(path: str) -> pd.DataFrame:
     )
     pivot_hours.columns = [f"w1_appl_hours_{c}" for c in pivot_hours.columns]
 
-    # 每户每种家电数量
+    # Count of each appliance type
     pivot_count = df.pivot_table(
         index="household_ID", columns="appliance_type", values="appliance_ID", aggfunc="count", fill_value=0
     )
     pivot_count.columns = [f"w1_appl_count_{c}" for c in pivot_count.columns]
 
     feats = pd.concat([pivot_hours, pivot_count], axis=1).reset_index()
-    print("  appliances 特征形状:", feats.shape)
+    print("appliances feature shape:", feats.shape)
     return feats
 
 
 def build_ac_features(path: str) -> pd.DataFrame:
-    """从 w1_ac_roster 构造空调相关特征"""
+    """
+    Build air conditioner features from w1_ac_roster
+    Features include:
+    - Number of AC units
+    - Total wattage
+    - Total hours used during daytime and nighttime
+    - Share of inverter ACs
+
+    Parameters:
+    path (str): Path to the w1_ac_roster CSV file.
+    Returns:
+    pd.DataFrame: DataFrame with household-level AC features.
+    """
     df = read_csv_flexible(path)
     g = df.groupby("household_ID")
 
@@ -107,19 +139,27 @@ def build_ac_features(path: str) -> pd.DataFrame:
     feats["w1_ac_total_wattage"] = g["wattage_of_the_ac"].sum()
     feats["w1_ac_hours_day"] = g["no_of_hours_ac_was_on_during_daytime_last_week"].sum()
     feats["w1_ac_hours_night"] = g["no_of_hours_ac_was_on_during_night_last_week"].sum()
-
-    # 变频 AC 比例
     feats["w1_ac_share_inverter"] = g["is_the_ac_inverter_or_not"].apply(
         lambda x: np.mean(x.fillna("").str.strip().str.lower() == "yes")
     )
-
     feats = feats.reset_index()
-    print("  ac 特征形状:", feats.shape)
+    print("  ac feature shape:", feats.shape)
     return feats
 
 
 def build_fan_features(path: str) -> pd.DataFrame:
-    """从 w1_fan_roster 构造风扇特征"""
+    """
+    Build fan features from w1_fan_roster
+    Features include:
+    - Number of fans
+    - Total hours used during daytime and nighttime
+
+    Parameters:
+    path (str): Path to the w1_fan_roster CSV file.
+
+    Returns:
+    pd.DataFrame: DataFrame with household-level fan features.
+    """
     df = read_csv_flexible(path)
     g = df.groupby("household_ID")
 
@@ -129,12 +169,24 @@ def build_fan_features(path: str) -> pd.DataFrame:
     feats["w1_fan_hours_night"] = g["no_of_hours_fan_was_on_during_night_last_week"].sum()
 
     feats = feats.reset_index()
-    print("  fan 特征形状:", feats.shape)
+    print("fan feature shape:", feats.shape)
     return feats
 
 
 def build_light_features(path: str) -> pd.DataFrame:
-    """从 w1_light_roster 构造灯具特征"""
+    """
+    Build lighting features from w1_light_roster
+    Features include:
+    - Number of lights
+    - Total wattage
+    - Total hours used during daytime and nighttime
+
+    Parameters:
+    path (str): Path to the w1_light_roster CSV file.
+
+    Returns:
+    pd.DataFrame: DataFrame with household-level lighting features.
+    """
     df = read_csv_flexible(path)
     g = df.groupby("household_ID")
 
@@ -145,12 +197,24 @@ def build_light_features(path: str) -> pd.DataFrame:
     feats["w1_light_hours_night"] = g["no_of_hours_bulb_was_on_during_night_last_week"].sum()
 
     feats = feats.reset_index()
-    print("  light 特征形状:", feats.shape)
+    print("light feature shape:", feats.shape)
     return feats
 
 
 def build_room_features(path: str) -> pd.DataFrame:
-    """从 w1_room_roster 构造房间结构特征"""
+    """
+    Build room features from w1_room_roster
+    Features include:
+    - Number of rooms
+    - Total number of windows, doors, bulbs, fans, ACs
+    - Number of bedrooms
+
+    Parameters:
+    path (str): Path to the w1_room_roster CSV file.
+
+    Returns:
+    pd.DataFrame: DataFrame with household-level room features.
+    """
     df = read_csv_flexible(path)
     g = df.groupby("household_ID")
 
@@ -161,19 +225,25 @@ def build_room_features(path: str) -> pd.DataFrame:
     feats["w1_total_room_bulbs"] = g["no_of_bulbs_in_the_room"].sum()
     feats["w1_total_room_fans"] = g["no_of_fans_in_the_room"].sum()
     feats["w1_total_room_acs"] = g["no_of_ACs_in_the_room"].sum()
-
-    # 房间用途里包含 "Bedroom" 的数量
     feats["w1_num_bedrooms"] = g.apply(
         lambda x: np.sum(x["main_purpose_of_the_room"].fillna("").str.contains("Bedroom"))
     )
-
     feats = feats.reset_index()
-    print("  room 特征形状:", feats.shape)
+    print("room feature shape:", feats.shape)
     return feats
 
 
 def build_household_info_features(path: str) -> pd.DataFrame:
-    """从 w1_household_information_and_history 保留关键户级信息"""
+    """
+    Build household information features from w1_household_information_and_history
+    Only keep key columns.
+
+    Parameters:
+    path (str): Path to the w1_household_information_and_history CSV file.
+
+    Returns:
+    pd.DataFrame: DataFrame with household-level household information features.
+    """
     df = read_csv_flexible(path)
 
     keep_cols = [
@@ -193,7 +263,7 @@ def build_household_info_features(path: str) -> pd.DataFrame:
     keep_cols = [c for c in keep_cols if c in df.columns]
 
     feats = df[keep_cols].drop_duplicates(subset=["household_ID"])
-    print("  household_info 特征形状:", feats.shape)
+    print("  household_info feature shape:", feats.shape)
     return feats
 
 
@@ -224,11 +294,41 @@ def build_energy_features(path: str) -> pd.DataFrame:
     key_cols = [c for c in key_cols if c in df.columns]
 
     feats = df[key_cols].drop_duplicates(subset=["household_ID"])
-    print("  energy 特征形状:", feats.shape)
+    print("  energy feature shape:", feats.shape)
     return feats
 
 
-# ===== 4. 调用所有构造函数并按 household_ID 合并 =====
+def merge_two(left, right):
+    """
+    Merges two DataFrames on 'household_ID' using an outer join.
+
+    Parameters:
+    left (pd.DataFrame): The left DataFrame to merge.
+    right (pd.DataFrame): The right DataFrame to merge.
+
+    Returns:
+    pd.DataFrame: The merged DataFrame.
+    """
+    return pd.merge(left, right, on="household_ID", how="outer")
+
+
+# ===== 3. Main: Build and merge all household-level features =====
+
+
+W1_DIR = r"01 Dataset\01 Raw Data from IEEE DataPort\02 Survey data"
+Out_DIR = r"01 Dataset\02 Processed Data"
+
+# table paths
+PATH_W1_DEMO = os.path.join(W1_DIR, "w1_demographics.csv")
+PATH_W1_APPL = os.path.join(W1_DIR, "w1_appliances.csv")
+PATH_W1_AC = os.path.join(W1_DIR, "w1_ac_roster.csv")
+PATH_W1_FAN = os.path.join(W1_DIR, "w1_fan_roster.csv")
+PATH_W1_LIGHT = os.path.join(W1_DIR, "w1_light_roster.csv")
+PATH_W1_ROOM = os.path.join(W1_DIR, "w1_room_roster.csv")
+PATH_W1_HHINFO = os.path.join(W1_DIR, "w1_household_information_and_history.csv")
+PATH_W1_ENERGY = os.path.join(W1_DIR, "w1_electricity_generation_water_heating_cooking.csv")
+
+OUTPUT_W1_FEATURES = os.path.join(Out_DIR, "01 Survey_household_features_merged.csv")
 
 demo_feats = build_demographics_features(PATH_W1_DEMO)
 appl_feats = build_appliance_features(PATH_W1_APPL)
@@ -250,15 +350,9 @@ feature_tables = [
     energy_feats,
 ]
 
-
-def merge_two(left, right):
-    return pd.merge(left, right, on="household_ID", how="outer")
-
-
 w1_household_features = reduce(merge_two, feature_tables)
 
-print("\n最终 Wave 1 household 特征表形状:", w1_household_features.shape)
+print("\nFinal survey household features shape:", w1_household_features.shape)
 
-# 保存结果
 w1_household_features.to_csv(OUTPUT_W1_FEATURES, index=False)
-print("已保存到:", OUTPUT_W1_FEATURES)
+print("Saved to", OUTPUT_W1_FEATURES)
