@@ -10,32 +10,27 @@ This repository contains the code and notebooks used for the course project.
 ## Folder Structure
 
 - **01 Dataset/**  
-  Raw and intermediate data (6-hour smart meter readings and survey CSVs).
+  Raw and intermediate data used for modelling.
+  - `01 Raw Data from IEEE DataPort/` – original survey and smart meter CSVs.  
+  - `02 Processed Data/` – outputs from the preprocessing scripts.  
+  - `03 Data for model/` – final train/test CSVs and feature documentation
+    (`Train_set.csv`, `Test_set.csv`, `README.md`).
 
 - **02 Preprocessing/**  
-  Python scripts to build the modelling dataset:
+  Python scripts to build the modelling dataset from raw files:
   - `01 Merge_survey.py` – build household-level survey features.
   - `02 Select_2024_Jan_w1_users.py` – select valid Wave 1 households (Jan 2024).
   - `03 Smart_6hour_merge_from_Jan2023_to_Jan2024.py` – merge 6-hour meter files.
   - `04 Summary_survey_and_meter_data.py` – join smart meter and survey features.
-  - `05 Add_label.py` – create `future_6h_consumption` label.
+  - `05 Add_label.py` – create the `future_6h_consumption` target.
 
 - **03 Feature Engineering/**  
-  - `01 Feature_viewing_management.ipynb` – EDA and additional feature engineering
-    (time features, lagged consumption, etc.).
+  - `01 Feature_viewing_management.ipynb` – EDA and feature engineering
+    (time features, historical consumption statistics, survey-based features, etc.).
 
 - **04 Models/**  
-  - `01 model.ipynb` – training and evaluation of ML models
-    (Linear Regression, Random Forest, XGBoost, LightGBM, etc.).
+  - Linear
+  - Tree
+  - ANN
 
----
-
-
-## Main Result (LightGBM)
-
-Using the feature-engineered dataset and a household-based train/test split,
-LightGBM achieves approximately:
-
-- **MAE:** ~0.39 kWh
-- **R²:** ~0.61
 
