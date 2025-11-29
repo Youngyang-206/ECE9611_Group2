@@ -1,2 +1,155 @@
-[MLP] MAE=0.3910 | RMSE=0.7112 | R2=0.6028 -> MLP_test_errors.csv
-[LSTM] MAE=0.3581 | RMSE=0.6575 | R2=0.6628 -> LSTM_test_errors.csv
+## Basic Performance Stats of ANN Models
+
+[MLP] Test Set Performance:
+  MAE:  0.3795
+  RMSE: 0.7153
+  R²:   0.5982
+
+[LSTM] Test Set Performance:
+  MAE:  0.3525
+  RMSE: 0.6328
+  R²:   0.6877
+
+
+
+## Detailed Output
+
+============================================================
+MACHINE LEARNING PIPELINE
+============================================================
+
+1. Loading datasets...
+   Train: 367767 samples
+   Test:  94946 samples
+
+2. Preparing features (FIT on train, TRANSFORM on test)...
+Warning: 499 unseen categories in 'coconut_shells_or_charcoal_used_for_cooking' set to most frequent value (0)
+   Features: 49
+
+3. Scaling features (FIT on train, TRANSFORM on test)...
+
+============================================================
+TRAINING MLP MODEL
+============================================================
+
+Model architecture:
+Model: "sequential"
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Layer (type)                    ┃ Output Shape           ┃       Param # ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ dense (Dense)                   │ (None, 128)            │         6,400 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dropout (Dropout)               │ (None, 128)            │             0 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dense_1 (Dense)                 │ (None, 64)             │         8,256 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dense_2 (Dense)                 │ (None, 1)              │            65 │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+
+ Total params: 14,721 (57.50 KB)
+
+ Trainable params: 14,721 (57.50 KB)
+
+ Non-trainable params: 0 (0.00 B)
+
+
+Training MLP...
+Epoch 1/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 6s 6ms/step - loss: 0.9065 - val_loss: 25.8915
+Epoch 2/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 7s 2ms/step - loss: 0.4955 - val_loss: 20.7211
+Epoch 3/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 0.4189 - val_loss: 17.7531
+Epoch 4/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 0.4098 - val_loss: 2.9178
+Epoch 5/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 0.3820 - val_loss: 1.8868
+Epoch 6/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 2s 3ms/step - loss: 0.3658 - val_loss: 2.4325
+Epoch 7/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 2s 3ms/step - loss: 0.3557 - val_loss: 1.7310
+Epoch 8/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 0.3491 - val_loss: 1.5572
+Epoch 9/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 0.3446 - val_loss: 2.4225
+Epoch 10/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 3s 2ms/step - loss: 0.3506 - val_loss: 2.7001
+Epoch 11/30
+647/647 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 0.3438 - val_loss: 12.0907
+Epoch 11: early stopping
+Restoring model weights from the end of the best epoch: 8.
+
+Evaluating MLP on TEST set...
+
+============================================================
+[MLP] Test Set Performance:
+  MAE:  0.3795
+  RMSE: 0.7153
+  R²:   0.5982
+  Saved to: MLP_test_errors.csv
+============================================================
+
+MLP model saved to: /content/drive/MyDrive/ECE9612_Project/04 Models/Results/MLP_model.keras
+
+============================================================
+TRAINING LSTM MODEL
+============================================================
+
+4. Building sequences for LSTM...
+   Training sequences...
+Created 362678 sequences of length 8
+   Test sequences...
+Created 93672 sequences of length 8
+
+Model architecture:
+Model: "sequential_1"
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Layer (type)                    ┃ Output Shape           ┃       Param # ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ lstm (LSTM)                     │ (None, 64)             │        29,184 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dense_3 (Dense)                 │ (None, 32)             │         2,080 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dropout_1 (Dropout)             │ (None, 32)             │             0 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dense_4 (Dense)                 │ (None, 1)              │            33 │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+
+ Total params: 31,297 (122.25 KB)
+
+ Trainable params: 31,297 (122.25 KB)
+
+ Non-trainable params: 0 (0.00 B)
+
+
+Training LSTM...
+Epoch 1/30
+1276/1276 ━━━━━━━━━━━━━━━━━━━━ 11s 7ms/step - loss: 0.8226 - val_loss: 1.5693
+Epoch 2/30
+1276/1276 ━━━━━━━━━━━━━━━━━━━━ 17s 5ms/step - loss: 0.3665 - val_loss: 1.5053
+Epoch 3/30
+1276/1276 ━━━━━━━━━━━━━━━━━━━━ 8s 6ms/step - loss: 0.3444 - val_loss: 1.5804
+Epoch 4/30
+1276/1276 ━━━━━━━━━━━━━━━━━━━━ 7s 5ms/step - loss: 0.3288 - val_loss: 1.5836
+Epoch 5/30
+1276/1276 ━━━━━━━━━━━━━━━━━━━━ 8s 6ms/step - loss: 0.3209 - val_loss: 1.5368
+Epoch 5: early stopping
+Restoring model weights from the end of the best epoch: 2.
+
+Evaluating LSTM on TEST set...
+
+============================================================
+[LSTM] Test Set Performance:
+  MAE:  0.3525
+  RMSE: 0.6328
+  R²:   0.6877
+  Saved to: LSTM_test_errors.csv
+============================================================
+
+LSTM model saved to: /content/drive/MyDrive/ECE9612_Project/04 Models/Results/LSTM_model.keras
+
+============================================================
+TRAINING COMPLETE!
+============================================================
